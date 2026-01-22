@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: appointment-db
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: appointments
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - appointment-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/appointments --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: appointment-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/appointments
+      - CLINIC_START_HOUR=9
+      - CLINIC_END_HOUR=17
+      - DEFAULT_SLOT_MINUTES=30
+      - LOG_LEVEL=info
+      - CORS_ORIGIN=http://localhost:5173
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - appointment-network
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/logs:/app/logs
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  appointment-network:
+    driver: bridge

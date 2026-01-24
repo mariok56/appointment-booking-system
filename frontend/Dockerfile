@@ -2,7 +2,7 @@
 # Multi-stage Dockerfile for React Frontend
 # ============================================
 
-# Stage 1: Builder
+# Stage 1: Development
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -15,6 +15,15 @@ RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Expose Vite dev server port
+EXPOSE 5173
+
+# For development (override with docker-compose)
+CMD ["npm", "run", "dev"]
+
+# Stage 2: Production Build
+FROM builder AS production-build
 
 # Build for production
 RUN npm run build

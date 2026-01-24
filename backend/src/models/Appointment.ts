@@ -45,13 +45,6 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: Date,
       required: [true, "End time is required"],
       index: true,
-      validate: {
-        validator: function (this: IAppointment, v: Date) {
-          // End must be after start
-          return v > this.start;
-        },
-        message: "End time must be after start time",
-      },
     },
     status: {
       type: String,

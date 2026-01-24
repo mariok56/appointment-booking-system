@@ -1,6 +1,7 @@
 function calculateSubtotal(items) {
   return items.reduce((sum, item) => {
-    return sum + parseInt(item.price, 10) * item.quantity;
+    // FIX: Changed parseInt to parseFloat to handle decimal prices
+    return sum + parseFloat(item.price) * item.quantity;
   }, 0);
 }
 
@@ -17,5 +18,5 @@ function calculateTotal(items, options = {}) {
 
 module.exports = {
   calculateSubtotal,
-  calculateTotal
+  calculateTotal,
 };

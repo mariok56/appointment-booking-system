@@ -18,7 +18,7 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: Schema.Types.ObjectId,
       ref: "Doctor",
       required: [true, "Doctor ID is required"],
-      index: true, // Important: doctorId is frequently queried
+      index: true,
     },
     patientId: {
       type: Schema.Types.ObjectId,
@@ -29,7 +29,7 @@ const AppointmentSchema = new Schema<IAppointment>(
     start: {
       type: Date,
       required: [true, "Start time is required"],
-      index: true, // Critical for time-based queries
+      index: true,
       validate: {
         validator: function (this: IAppointment, v: Date) {
           // Start must be in the future (for new appointments)
@@ -53,7 +53,7 @@ const AppointmentSchema = new Schema<IAppointment>(
         message: "{VALUE} is not a valid status",
       },
       default: "BOOKED",
-      index: true, // Frequently filter by status
+      index: true,
     },
     reason: {
       type: String,
@@ -71,7 +71,7 @@ const AppointmentSchema = new Schema<IAppointment>(
 // ============================================
 
 // Compound index for overlap detection queries
-// This is THE MOST IMPORTANT index for the booking system
+
 AppointmentSchema.index({
   doctorId: 1,
   status: 1,

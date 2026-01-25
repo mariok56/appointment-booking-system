@@ -9,25 +9,6 @@ import logger from "../src/config/logger";
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
-/**
- * Seed Script
- *
- * Creates realistic test data for the appointment booking system
- *
- * Run with: npm run seed
- *
- * What it creates:
- * - 3-5 doctors with different specialties
- * - 5-10 patients with contact information
- * - 20-30 appointments (future only, booked/cancelled)
- *
- * Features:
- * - Idempotent (safe to run multiple times)
- * - Realistic data distribution
- * - Some doctors fully booked, others with availability
- * - Mix of appointment statuses
- */
-
 // Sample data
 const doctorsData = [
   {

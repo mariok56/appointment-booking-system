@@ -134,7 +134,7 @@ export const validatePatientCreation = (
     }),
 
     phone: Joi.string()
-      .pattern(/^[\d\s\-\+\(\)]+$/)
+      .pattern(/^[\d\s\-()]+$/)
       .optional()
       .messages({
         "string.pattern.base": "Invalid phone number format",

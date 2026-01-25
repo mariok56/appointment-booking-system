@@ -7,20 +7,6 @@ import { correlationIdMiddleware } from "./middleware/correlationId";
 import logger from "./config/logger";
 import { healthRoutes } from "./routes";
 
-/**
- * Create and configure Express application
- *
- * This file:
- * - Configures Express middleware
- * - Sets up routes
- * - Configures error handling
- * - Does NOT start the server (server.ts does that)
- *
- * Why separate from server.ts?
- * - Testing: Can import app without starting server
- * - Flexibility: Can use same app in different contexts (tests, serverless)
- */
-
 const createApp = (): Application => {
   const app: Application = express();
 
@@ -105,7 +91,7 @@ const createApp = (): Application => {
       endpoints: {
         health: "/health",
         api: "/api",
-        docs: "/api-docs", // Would be Swagger UI
+        docs: "/api-docs",
       },
     });
   });

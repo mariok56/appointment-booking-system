@@ -24,7 +24,7 @@ const PatientSchema = new Schema<IPatient>(
       validate: {
         validator: function (v: string) {
           // Basic phone validation (US format)
-          return !v || /^[\d\s\-\+\(\)]+$/.test(v);
+          return !v || /^[\d\s\-)]+$/.test(v);
         },
         message: "Please provide a valid phone number",
       },
@@ -36,7 +36,7 @@ const PatientSchema = new Schema<IPatient>(
       validate: {
         validator: function (v: string) {
           // Email regex validation
-          return !v || /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(v);
+          return !v || /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(v);
         },
         message: "Please provide a valid email address",
       },

@@ -67,7 +67,7 @@ class AppointmentService {
       logger.debug("Transaction started", { correlationId });
 
       // Step 3: Check for overlaps WITHIN the transaction
-      // This is CRITICAL - the read and write must be atomic
+
       const overlap = await this.checkOverlap(
         data.doctorId,
         data.start,
@@ -284,33 +284,6 @@ class AppointmentService {
     return slots;
   }
 
-  /**
-   * Check if two time slots overlap
-   *
-   * Classic overlap detection algorithm:
-   * Two intervals [A_start, A_end] and [B_start, B_end] overlap if:
-   * A_start < B_end AND B_start < A_end
-   *
-   * Visual examples:
-   *
-   * Overlap:     A |-------|
-   *              B    |-------|
-   *
-   * Overlap:     A    |-------|
-   *              B |-------|
-   *
-   * Overlap:     A |-----------|
-   *              B   |-----|
-   *
-   * No Overlap:  A |-----|
-   *              B         |-----|
-   *
-   * @param start1 - Start of first slot
-   * @param end1 - End of first slot
-   * @param start2 - Start of second slot
-   * @param end2 - End of second slot
-   * @returns true if slots overlap
-   */
   private slotsOverlap(
     start1: Date,
     end1: Date,
@@ -319,17 +292,6 @@ class AppointmentService {
   ): boolean {
     return start1 < end2 && start2 < end1;
   }
-
-  /**
-   * Cancel an appointment
-   *
-   * Does NOT delete the appointment, just marks it as CANCELLED
-   * This maintains audit trail and allows analysis of cancellation patterns
-   *
-   * @param appointmentId - ID of appointment to cancel
-   * @returns Updated appointment
-   * @throws Error if appointment not found
-   */
   async cancelAppointment(appointmentId: string): Promise<IAppointment> {
     logger.info("Cancelling appointment", { appointmentId });
 
@@ -352,13 +314,6 @@ class AppointmentService {
     return appointment;
   }
 
-  /**
-   * Get appointments for a doctor on a specific date
-   *
-   * @param doctorId - Doctor ID
-   * @param date - Date to fetch appointments
-   * @returns Array of appointments
-   */
   async getAppointmentsByDoctorAndDate(
     doctorId: string,
     date: Date,
@@ -373,7 +328,7 @@ class AppointmentService {
       doctorId: new mongoose.Types.ObjectId(doctorId),
       start: { $gte: startOfDay, $lte: endOfDay },
     })
-      .populate("patientId", "name email phone") // Include patient details
+      .populate("patientId", "name email phone")
       .sort({ start: 1 });
 
     return appointments;

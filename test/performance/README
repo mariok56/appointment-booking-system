@@ -1,0 +1,211 @@
+# Performance Tests
+
+This directory contains performance and concurrency tests for the appointment booking system.
+
+## Tests Included
+
+### 1. Concurrent Booking Test (`concurrent-booking.test.js`)
+
+Tests race condition prevention by attempting to book the same time slot simultaneously from multiple requests.
+
+**What it tests:**
+
+- Race condition prevention in booking logic
+- MongoDB transaction handling
+- Concurrent request handling
+- Error handling under load
+
+**Expected behavior:**
+
+- **Exactly 1** booking should succeed (201 Created)
+- **9 bookings** should fail with 409 Conflict
+- **No overlapping appointments** should exist in database
+- All requests should complete in reasonable time (< 5 seconds total)
+
+## Prerequisites
+
+1. **Backend must be running:**
+
+   ```bash
+   cd ../..
+   docker compose up -d
+   ```
+
+2. **Database must be seeded** (optional but recommended):
+   ```bash
+   cd backend
+   npm run seed
+   ```
+
+## Running Tests
+
+### Install dependencies:
+
+```bash
+cd tests/performance
+npm install
+```
+
+### Run concurrent booking test:
+
+```bash
+npm run test:concurrent
+```
+
+### Run all performance tests:
+
+```bash
+npm test
+```
+
+## Test Configuration
+
+You can configure the test by setting environment variables:
+
+```bash
+# API URL (default: http://localhost:3000/api)
+API_URL=http://localhost:3000/api npm run test:concurrent
+
+# Number of concurrent requests (default: 10)
+CONCURRENT_REQUESTS=20 npm run test:concurrent
+```
+
+## Interpreting Results
+
+### ✓ Passing Test Output
+
+```
+========================================
+FINAL VERDICT
+========================================
+
+✓✓✓ TEST PASSED ✓✓✓
+
+  Race condition prevention is working correctly!
+  Exactly 1 booking succeeded, rest failed gracefully.
+  No overlapping appointments in database.
+```
+
+### ✗ Failing Test Output
+
+```
+========================================
+FINAL VERDICT
+========================================
+
+✗✗✗ TEST FAILED ✗✗✗
+
+  Expected 1 successful booking, got 2
+  Overlapping appointments detected in database!
+
+  Race condition prevention may not be working correctly.
+```
+
+## Understanding the Test
+
+The test works by:
+
+1. **Setup Phase:**
+   - Creates a test doctor
+   - Creates 10 test patients
+   - Defines a time slot 24 hours in the future
+
+2. **Execution Phase:**
+   - Fires 10 booking requests **simultaneously** (Promise.all)
+   - All requests try to book the **same time slot**
+   - Measures response times and captures results
+
+3. **Analysis Phase:**
+   - Counts successful vs failed bookings
+   - Groups errors by error code
+   - Calculates average response time
+   - Checks for overlapping appointments in database
+
+4. **Verification Phase:**
+   - Queries all appointments for the test date
+   - Checks every pair of appointments for overlaps
+   - Reports any overlaps found
+
+## Performance Benchmarks
+
+**Expected performance:**
+
+- Total test duration: < 5 seconds
+- Average response time: < 500ms
+- Successful booking: 100-300ms
+- Failed bookings: 50-200ms
+
+**If performance is slower:**
+
+- Check MongoDB indexes (see backend README)
+- Verify MongoDB is not under heavy load
+- Check network latency to database
+- Review transaction configuration
+
+## Troubleshooting
+
+### Test fails with "Connection refused"
+
+Backend is not running. Start it with:
+
+```bash
+docker compose up
+```
+
+### Test fails with "Doctor not found"
+
+API might not be ready. Wait a few seconds and retry.
+
+### Multiple bookings succeed
+
+**CRITICAL:** Race condition prevention is not working!
+
+- Check MongoDB transaction implementation
+- Verify MongoDB is running in replica set mode (required for transactions)
+- Review `appointmentService.bookAppointment()` logic
+
+### All bookings fail
+
+Check if:
+
+- Time slot is in working hours (9 AM - 5 PM)
+- Time slot is in the future
+- Doctor and patient IDs are valid
+
+## Advanced Testing
+
+### Test with higher concurrency:
+
+```bash
+CONCURRENT_REQUESTS=50 npm run test:concurrent
+```
+
+### Stress test with multiple slots:
+
+Create a script to test multiple time slots:
+
+```javascript
+for (let hour = 9; hour < 17; hour++) {
+  for (let minute of [0, 30]) {
+    // Run concurrent test for this slot
+  }
+}
+```
+
+### Test different scenarios:
+
+- Back-to-back bookings
+- Overlapping time ranges
+- Different slot durations
+- Multiple doctors simultaneously
+
+## Continuous Integration
+
+This test is included in the CI/CD pipeline (`.github/workflows/ci.yml`) and runs automatically on every push to ensure race condition prevention remains intact.
+
+## Additional Notes
+
+- Test creates real data in the database (doctor, patients, appointments)
+- Data is NOT automatically cleaned up (future enhancement)
+- Run `npm run seed` to reset database to clean state if needed
+- For production testing, use a separate test database

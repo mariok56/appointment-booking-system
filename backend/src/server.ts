@@ -2,16 +2,6 @@ import createApp from "./app";
 import connectDatabase from "./config/database";
 import logger from "./config/logger";
 
-/**
- * Server startup file
- *
- * Responsibilities:
- * - Connect to database
- * - Start Express server
- * - Handle process signals (graceful shutdown)
- * - Log startup information
- */
-
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const NODE_ENV = process.env.NODE_ENV || "development";
 

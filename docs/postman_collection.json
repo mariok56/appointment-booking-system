@@ -1,28 +1,14 @@
 {
   "info": {
-    "name": "Appointment Booking System",
-    "description": "API for booking clinic appointments",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "name": "Appointment Booking System - Complete API",
+    "description": "Complete API documentation for the clinic appointment booking system.\n\n## Authentication\nCurrently no authentication required (would be JWT in production).\n\n## Base URL\n`http://localhost:3000`\n\n## Error Handling\nAll endpoints return standardized error responses:\n```json\n{\n  \"success\": false,\n  \"error\": {\n    \"code\": \"ERROR_CODE\",\n    \"message\": \"Human-readable message\",\n    \"correlationId\": \"uuid\"\n  }\n}\n```\n\n## Common Error Codes\n- `VALIDATION_ERROR` - Invalid input data\n- `NOT_FOUND` - Resource not found\n- `BOOKING_CONFLICT` - Time slot not available\n- `INTERNAL_ERROR` - Server error",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:3000",
-      "type": "string"
-    },
-    {
-      "key": "doctorId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "patientId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "appointmentId",
-      "value": "",
       "type": "string"
     }
   ],
@@ -39,8 +25,10 @@
               "raw": "{{baseUrl}}/health",
               "host": ["{{baseUrl}}"],
               "path": ["health"]
-            }
-          }
+            },
+            "description": "Check API and database health status.\n\n**Response Codes:**\n- 200: All systems operational\n- 503: Service unavailable (DB down)\n\n**Response:**\n```json\n{\n  \"status\": \"ok\",\n  \"timestamp\": \"2024-01-25T10:00:00.000Z\",\n  \"uptime\": 12345,\n  \"checks\": {\n    \"api\": \"ok\",\n    \"database\": \"ok\"\n  }\n}\n```"
+          },
+          "response": []
         }
       ]
     },
@@ -49,20 +37,6 @@
       "item": [
         {
           "name": "Create Doctor",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    const response = pm.response.json();",
-                  "    pm.collectionVariables.set('doctorId', response.data._id);",
-                  "    pm.environment.set('doctorId', response.data._id);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -79,11 +53,13 @@
               "raw": "{{baseUrl}}/api/doctors",
               "host": ["{{baseUrl}}"],
               "path": ["api", "doctors"]
-            }
-          }
+            },
+            "description": "Create a new doctor.\n\n**Request Body:**\n- `name` (required): Doctor's full name (2-100 chars)\n- `specialty` (optional): Medical specialty (max 100 chars)\n\n**Response:** 201 Created\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"...\",\n    \"name\": \"Dr. Sarah Johnson\",\n    \"specialty\": \"Cardiology\",\n    \"createdAt\": \"2024-01-25T10:00:00.000Z\",\n    \"updatedAt\": \"2024-01-25T10:00:00.000Z\"\n  },\n  \"message\": \"Doctor created successfully\"\n}\n```"
+          },
+          "response": []
         },
         {
-          "name": "Get All Doctors",
+          "name": "List All Doctors",
           "request": {
             "method": "GET",
             "header": [],
@@ -91,8 +67,10 @@
               "raw": "{{baseUrl}}/api/doctors",
               "host": ["{{baseUrl}}"],
               "path": ["api", "doctors"]
-            }
-          }
+            },
+            "description": "Get all doctors, sorted alphabetically by name."
+          },
+          "response": []
         },
         {
           "name": "Get Doctor by ID",
@@ -100,50 +78,20 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/doctors/{{doctorId}}",
+              "raw": "{{baseUrl}}/api/doctors/:id",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "doctors", "{{doctorId}}"]
-            }
-          }
-        },
-        {
-          "name": "Update Doctor",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Dr. Sarah Johnson\",\n  \"specialty\": \"Cardiology and Internal Medicine\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/doctors/{{doctorId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "doctors", "{{doctorId}}"]
-            }
-          }
-        },
-        {
-          "name": "Search Doctors",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/doctors/search?q=cardio",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "doctors", "search"],
-              "query": [
+              "path": ["api", "doctors", ":id"],
+              "variable": [
                 {
-                  "key": "q",
-                  "value": "cardio"
+                  "key": "id",
+                  "value": "{{doctorId}}",
+                  "description": "MongoDB ObjectId (24 hex chars)"
                 }
               ]
-            }
-          }
+            },
+            "description": "Get a specific doctor by ID.\n\n**Path Parameters:**\n- `id`: MongoDB ObjectId\n\n**Error Responses:**\n- 400: Invalid ID format\n- 404: Doctor not found"
+          },
+          "response": []
         }
       ]
     },
@@ -152,20 +100,6 @@
       "item": [
         {
           "name": "Create Patient",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    const response = pm.response.json();",
-                  "    pm.collectionVariables.set('patientId', response.data._id);",
-                  "    pm.environment.set('patientId', response.data._id);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -182,93 +116,36 @@
               "raw": "{{baseUrl}}/api/patients",
               "host": ["{{baseUrl}}"],
               "path": ["api", "patients"]
-            }
-          }
+            },
+            "description": "Create a new patient.\n\n**Request Body:**\n- `name` (required): Patient's full name (2-100 chars)\n- `email` (optional): Valid email address\n- `phone` (optional): Phone number (digits, spaces, dashes, parentheses)\n\n**Validations:**\n- Email must be valid format if provided\n- Phone must be valid format if provided\n- Duplicate emails are rejected"
+          },
+          "response": []
         },
         {
-          "name": "Get All Patients",
+          "name": "List Patients",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/patients?limit=10&skip=0",
+              "raw": "{{baseUrl}}/api/patients?limit=100&skip=0",
               "host": ["{{baseUrl}}"],
               "path": ["api", "patients"],
               "query": [
                 {
                   "key": "limit",
-                  "value": "10"
+                  "value": "100",
+                  "description": "Maximum number of patients to return (default: 100)"
                 },
                 {
                   "key": "skip",
-                  "value": "0"
+                  "value": "0",
+                  "description": "Number of patients to skip for pagination (default: 0)"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Patient by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/patients/{{patientId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "patients", "{{patientId}}"]
-            }
-          }
-        },
-        {
-          "name": "Update Patient",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.updated@example.com\",\n  \"phone\": \"+1-555-0199\"\n}"
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/patients/{{patientId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "patients", "{{patientId}}"]
-            }
-          }
-        },
-        {
-          "name": "Search Patients",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/patients/search?q=john",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "patients", "search"],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "john"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Appointments",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/patients/{{patientId}}/appointments",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "patients", "{{patientId}}", "appointments"]
-            }
-          }
+            "description": "Get all patients with pagination support."
+          },
+          "response": []
         }
       ]
     },
@@ -277,20 +154,6 @@
       "item": [
         {
           "name": "Book Appointment",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    const response = pm.response.json();",
-                  "    pm.collectionVariables.set('appointmentId', response.data._id);",
-                  "    pm.environment.set('appointmentId', response.data._id);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -301,36 +164,42 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctorId\": \"{{doctorId}}\",\n  \"patientId\": \"{{patientId}}\",\n  \"start\": \"2024-01-25T10:00:00.000Z\",\n  \"end\": \"2024-01-25T10:30:00.000Z\",\n  \"reason\": \"Annual checkup\"\n}"
+              "raw": "{\n  \"doctorId\": \"507f1f77bcf86cd799439011\",\n  \"patientId\": \"507f1f77bcf86cd799439012\",\n  \"start\": \"2024-01-25T10:00:00.000Z\",\n  \"end\": \"2024-01-25T10:30:00.000Z\",\n  \"reason\": \"Annual checkup\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/appointments",
               "host": ["{{baseUrl}}"],
               "path": ["api", "appointments"]
-            }
-          }
+            },
+            "description": "Book a new appointment (race-condition safe).\n\n**Request Body:**\n- `doctorId` (required): Valid MongoDB ObjectId\n- `patientId` (required): Valid MongoDB ObjectId\n- `start` (required): ISO 8601 date/time\n- `end` (required): ISO 8601 date/time\n- `reason` (optional): Reason for visit (max 500 chars)\n\n**Business Rules:**\n- Start must be before end\n- Must be within same day\n- Must be in the future\n- Must be within working hours (9 AM - 5 PM)\n- Cannot overlap with existing BOOKED appointments\n\n**Error Responses:**\n- 400: Validation error\n- 409: Booking conflict (slot not available)"
+          },
+          "response": []
         },
         {
-          "name": "Get Appointments",
+          "name": "Get Appointments for Doctor/Date",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/appointments?doctorId={{doctorId}}&date=2024-01-25",
+              "raw": "{{baseUrl}}/api/appointments?doctorId=507f1f77bcf86cd799439011&date=2024-01-25",
               "host": ["{{baseUrl}}"],
               "path": ["api", "appointments"],
               "query": [
                 {
                   "key": "doctorId",
-                  "value": "{{doctorId}}"
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "Doctor's MongoDB ObjectId (required)"
                 },
                 {
                   "key": "date",
-                  "value": "2024-01-25"
+                  "value": "2024-01-25",
+                  "description": "Date in YYYY-MM-DD format (required)"
                 }
               ]
-            }
-          }
+            },
+            "description": "Get all appointments for a specific doctor on a specific date.\n\n**Query Parameters:**\n- `doctorId` (required): MongoDB ObjectId\n- `date` (required): YYYY-MM-DD format\n\n**Response:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"date\": \"2024-01-25\",\n    \"doctorId\": \"...\",\n    \"count\": 5,\n    \"appointments\": [\n      {\n        \"_id\": \"...\",\n        \"start\": \"2024-01-25T09:00:00.000Z\",\n        \"end\": \"2024-01-25T09:30:00.000Z\",\n        \"status\": \"BOOKED\",\n        \"patientId\": {\n          \"_id\": \"...\",\n          \"name\": \"John Doe\",\n          \"email\": \"john@example.com\"\n        },\n        \"reason\": \"Checkup\"\n      }\n    ]\n  }\n}\n```"
+          },
+          "response": []
         },
         {
           "name": "Cancel Appointment",
@@ -338,11 +207,20 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}/cancel",
+              "raw": "{{baseUrl}}/api/appointments/:id/cancel",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "appointments", "{{appointmentId}}", "cancel"]
-            }
-          }
+              "path": ["api", "appointments", ":id", "cancel"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{appointmentId}}",
+                  "description": "Appointment MongoDB ObjectId"
+                }
+              ]
+            },
+            "description": "Cancel an appointment (sets status to CANCELLED, does not delete).\n\n**Path Parameters:**\n- `id`: Appointment MongoDB ObjectId\n\n**Note:** Cancellation does not delete the appointment. It updates the status to 'CANCELLED' for audit trail purposes."
+          },
+          "response": []
         }
       ]
     },
@@ -355,25 +233,30 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/availability?doctorId={{doctorId}}&date=2024-01-25&slotMinutes=30",
+              "raw": "{{baseUrl}}/api/availability?doctorId=507f1f77bcf86cd799439011&date=2024-01-25&slotMinutes=30",
               "host": ["{{baseUrl}}"],
               "path": ["api", "availability"],
               "query": [
                 {
                   "key": "doctorId",
-                  "value": "{{doctorId}}"
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "Doctor's MongoDB ObjectId (required)"
                 },
                 {
                   "key": "date",
-                  "value": "2024-01-25"
+                  "value": "2024-01-25",
+                  "description": "Date in YYYY-MM-DD format (required)"
                 },
                 {
                   "key": "slotMinutes",
-                  "value": "30"
+                  "value": "30",
+                  "description": "Slot duration in minutes (default: 30)"
                 }
               ]
-            }
-          }
+            },
+            "description": "Calculate available time slots for a doctor on a specific date.\n\n**Query Parameters:**\n- `doctorId` (required): MongoDB ObjectId\n- `date` (required): YYYY-MM-DD format\n- `slotMinutes` (optional): Slot duration (default: 30)\n\n**Algorithm:**\n1. Generate all possible slots between 09:00-17:00\n2. Fetch all BOOKED appointments for that day\n3. Filter out occupied slots\n4. Return available slots\n\n**Performance:** < 300ms even with 100+ appointments per day\n\n**Response:**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"date\": \"2024-01-25\",\n    \"doctorId\": \"...\",\n    \"slotMinutes\": 30,\n    \"totalSlots\": 12,\n    \"slots\": [\n      {\n        \"start\": \"2024-01-25T09:00:00.000Z\",\n        \"end\": \"2024-01-25T09:30:00.000Z\"\n      },\n      {\n        \"start\": \"2024-01-25T09:30:00.000Z\",\n        \"end\": \"2024-01-25T10:00:00.000Z\"\n      }\n    ]\n  }\n}\n```"
+          },
+          "response": []
         }
       ]
     }

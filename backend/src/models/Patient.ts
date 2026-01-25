@@ -23,8 +23,7 @@ const PatientSchema = new Schema<IPatient>(
       trim: true,
       validate: {
         validator: function (v: string) {
-          // Basic phone validation (US format)
-          return !v || /^[\d\s\-)]+$/.test(v);
+          return !v || /^[\d\s\-()+ ]+$/.test(v);
         },
         message: "Please provide a valid phone number",
       },

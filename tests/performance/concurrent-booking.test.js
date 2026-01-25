@@ -6,15 +6,16 @@ const API_URL = process.env.API_URL || "http://localhost:3000/api";
 const CONCURRENT_REQUESTS = 10;
 
 /**
- * Generate a test slot that's guaranteed to be during working hours
- * Working hours: 9:00 AM - 5:00 PM
+ * Generate a test slot that's guaranteed to be during working hours (UTC)
+ * Working hours: 9:00 AM - 5:00 PM (in UTC for consistency)
  */
 function generateTestSlot() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Set to 10:00 AM tomorrow (safe time during working hours)
-  tomorrow.setHours(10, 0, 0, 0);
+  // Set to 10:00 AM UTC tomorrow (safe time during working hours)
+  // Using setUTCHours ensures we're working in UTC regardless of local timezone
+  tomorrow.setUTCHours(10, 0, 0, 0);
 
   const start = new Date(tomorrow);
   const end = new Date(tomorrow.getTime() + 30 * 60 * 1000); // +30 minutes
@@ -128,7 +129,11 @@ async function runConcurrentTest(doctorId, patientIds) {
     "blue",
     `Making ${CONCURRENT_REQUESTS} concurrent requests for the same slot...`,
   );
-  log("blue", `Time slot: ${TEST_SLOT.start.toISOString()}\n`);
+  log(
+    "blue",
+    `Time slot: ${TEST_SLOT.start.toISOString()} - ${TEST_SLOT.end.toISOString()}`,
+  );
+  log("blue", `(10:00 AM - 10:30 AM UTC)\n`);
 
   const startTime = Date.now();
 

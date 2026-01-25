@@ -1,5 +1,4 @@
 services:
-  # MongoDB Database
   mongodb:
     image: mongo:7
     container_name: appointment-db
@@ -8,14 +7,23 @@ services:
       - "27017:27017"
     environment:
       MONGO_INITDB_DATABASE: appointments
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo-data:/data/db
     networks:
       - appointment-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/appointments --quiet
+      test: |
+        mongosh --eval "
+          try {
+            rs.status();
+          } catch (e) {
+            rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]});
+          }
+          db.adminCommand('ping');
+        " --quiet
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
       start_period: 40s
 
@@ -31,7 +39,7 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - MONGODB_URI=mongodb://mongodb:27017/appointments
+      - MONGODB_URI=mongodb://mongodb:27017/appointments?replicaSet=rs0&directConnection=true
       - CLINIC_START_HOUR=9
       - CLINIC_END_HOUR=17
       - DEFAULT_SLOT_MINUTES=30

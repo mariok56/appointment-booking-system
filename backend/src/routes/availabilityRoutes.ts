@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { getAvailability } from "../controllers/appointmentController";
+import appointmentController from "../controllers/appointmentController";
+const { getAvailability } = appointmentController;
 
 const router = Router();
 

@@ -30,12 +30,27 @@ interface BookingData {
   reason?: string;
 }
 
+// Lock schema for preventing race conditions
+const BookingLockSchema = new mongoose.Schema({
+  lockKey: { type: String, required: true, unique: true },
+  createdAt: { type: Date, default: Date.now, expires: 30 }, // Auto-expire after 30 seconds
+});
+
+// Create the lock model (will be created if doesn't exist)
+let BookingLock: mongoose.Model<any>;
+try {
+  BookingLock = mongoose.model("BookingLock");
+} catch {
+  BookingLock = mongoose.model("BookingLock", BookingLockSchema);
+}
+
 class AppointmentService {
   /**
    * Book an appointment with race-condition safety
    *
-   * This is the core method that prevents double-booking
-   * Uses MongoDB transactions to ensure atomicity
+   * This method uses a two-phase approach:
+   * 1. Acquire an atomic lock for the doctor-timeslot combination
+   * 2. Check for overlaps and create appointment within a transaction
    *
    * @param data - Appointment booking details
    * @returns Created appointment
@@ -57,76 +72,132 @@ class AppointmentService {
     this.validateWorkingHours(data.start, data.end);
     this.validateNotInPast(data.start);
 
-    // Step 2: Start a MongoDB session for transaction
-    const session = await mongoose.startSession();
+    // Step 2: Create a unique lock key for this doctor-timeslot
+    // This ensures only one booking can proceed at a time for overlapping slots
+    const lockKey = this.generateLockKey(data.doctorId, data.start, data.end);
+
+    // Step 3: Try to acquire lock atomically
+    let lockAcquired = false;
+    try {
+      await BookingLock.create({ lockKey });
+      lockAcquired = true;
+      logger.debug("Lock acquired", { correlationId, lockKey });
+    } catch (error: any) {
+      if (error.code === 11000) {
+        // Duplicate key error = another booking in progress
+        logger.warn("Booking conflict - lock already held", {
+          correlationId,
+          lockKey,
+        });
+        throw new AppointmentBookingError(
+          "Time slot is currently being booked by another user. Please try again.",
+        );
+      }
+      throw error;
+    }
 
     try {
-      // Start transaction
-      session.startTransaction();
+      // Step 4: Start a MongoDB session for transaction
+      const session = await mongoose.startSession();
 
-      logger.debug("Transaction started", { correlationId });
-
-      // Step 3: Check for overlaps WITHIN the transaction
-
-      const overlap = await this.checkOverlap(
-        data.doctorId,
-        data.start,
-        data.end,
-        session,
-      );
-
-      if (overlap) {
-        logger.warn("Booking conflict detected", {
-          correlationId,
-          doctorId: data.doctorId,
-          conflictingAppointment: overlap._id,
-          requestedStart: data.start,
-          requestedEnd: data.end,
+      try {
+        session.startTransaction({
+          readConcern: { level: "snapshot" },
+          writeConcern: { w: "majority" },
         });
 
-        throw new AppointmentBookingError("Time slot not available");
+        logger.debug("Transaction started", { correlationId });
+
+        // Step 5: Check for overlaps WITHIN the transaction
+        const overlap = await this.checkOverlap(
+          data.doctorId,
+          data.start,
+          data.end,
+          session,
+        );
+
+        if (overlap) {
+          logger.warn("Booking conflict detected", {
+            correlationId,
+            doctorId: data.doctorId,
+            conflictingAppointment: overlap._id,
+            requestedStart: data.start,
+            requestedEnd: data.end,
+          });
+
+          await session.abortTransaction();
+          throw new AppointmentBookingError("Time slot not available");
+        }
+
+        // Step 6: Create the appointment within the transaction
+        const appointment = await Appointment.create(
+          [
+            {
+              doctorId: new mongoose.Types.ObjectId(data.doctorId),
+              patientId: new mongoose.Types.ObjectId(data.patientId),
+              start: data.start,
+              end: data.end,
+              status: "BOOKED",
+              reason: data.reason,
+            },
+          ],
+          { session },
+        );
+
+        // Step 7: Commit the transaction
+        await session.commitTransaction();
+
+        logger.info("Appointment booked successfully", {
+          correlationId,
+          appointmentId: appointment[0]._id,
+          doctorId: data.doctorId,
+        });
+
+        return appointment[0];
+      } catch (error) {
+        // Rollback on any error
+        await session.abortTransaction();
+
+        logger.error("Appointment booking failed", {
+          correlationId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          doctorId: data.doctorId,
+        });
+
+        throw error;
+      } finally {
+        // Always end the session
+        session.endSession();
       }
-
-      // Step 4: Create the appointment within the transaction
-      const appointment = await Appointment.create(
-        [
-          {
-            doctorId: new mongoose.Types.ObjectId(data.doctorId),
-            patientId: new mongoose.Types.ObjectId(data.patientId),
-            start: data.start,
-            end: data.end,
-            status: "BOOKED",
-            reason: data.reason,
-          },
-        ],
-        { session },
-      );
-
-      // Step 5: Commit the transaction
-      await session.commitTransaction();
-
-      logger.info("Appointment booked successfully", {
-        correlationId,
-        appointmentId: appointment[0]._id,
-        doctorId: data.doctorId,
-      });
-
-      return appointment[0];
-    } catch (error) {
-      // Rollback on any error
-      await session.abortTransaction();
-
-      logger.error("Appointment booking failed", {
-        correlationId,
-        error: error instanceof Error ? error.message : "Unknown error",
-        doctorId: data.doctorId,
-      });
-
-      throw error;
     } finally {
-      // Always end the session
-      session.endSession();
+      // Step 8: Release the lock
+      if (lockAcquired) {
+        try {
+          await BookingLock.deleteOne({ lockKey });
+          logger.debug("Lock released", { correlationId, lockKey });
+        } catch (error) {
+          logger.error("Failed to release lock", {
+            correlationId,
+            lockKey,
+            error,
+          });
+        }
+      }
     }
+  }
+
+  /**
+   * Generate a unique lock key for a doctor-timeslot combination
+   * The key covers the time range to prevent overlapping bookings
+   */
+  private generateLockKey(doctorId: string, start: Date, end: Date): string {
+    // Normalize to 30-minute slot boundaries
+    const slotSize = 30 * 60 * 1000; // 30 minutes in ms
+    const startSlot = Math.floor(start.getTime() / slotSize);
+    const endSlot = Math.floor(end.getTime() / slotSize);
+
+    // Create a key that covers all slots this appointment spans
+    return `${doctorId}-${startSlot}-${endSlot}`;
   }
 
   /**
@@ -292,6 +363,7 @@ class AppointmentService {
   ): boolean {
     return start1 < end2 && start2 < end1;
   }
+
   async cancelAppointment(appointmentId: string): Promise<IAppointment> {
     logger.info("Cancelling appointment", { appointmentId });
 
@@ -357,10 +429,10 @@ class AppointmentService {
    * Validate that appointment is within clinic working hours
    */
   private validateWorkingHours(start: Date, end: Date): void {
-    const startHour = start.getHours();
-    const startMinutes = start.getMinutes();
-    const endHour = end.getHours();
-    const endMinutes = end.getMinutes();
+    const startHour = start.getUTCHours();
+    const startMinutes = start.getUTCMinutes();
+    const endHour = end.getUTCHours();
+    const endMinutes = end.getUTCMinutes();
 
     const clinicStart = parseInt(process.env.CLINIC_START_HOUR || "9");
     const clinicEnd = parseInt(process.env.CLINIC_END_HOUR || "17");

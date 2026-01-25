@@ -1,9 +1,7 @@
-import request from "supertest";
-
-import app from "../../src/app";
+const request = require("supertest");
+const app = require("../../dist/app").default;
 
 describe("POST /api/appointments - Integration Test", () => {
-  // Skip this test if no app is available
   test.skip("should book appointment or return conflict", async () => {
     const response = await request(app)
       .post("/api/appointments")
@@ -17,7 +15,6 @@ describe("POST /api/appointments - Integration Test", () => {
         reason: "Integration test",
       });
 
-    // Should be either 201 (booked) or 409 (conflict)
     expect([201, 409]).toContain(response.status);
   });
 

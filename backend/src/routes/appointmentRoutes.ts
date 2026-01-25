@@ -1,9 +1,7 @@
 import { Router } from "express";
-import {
-  bookAppointment,
-  cancelAppointment,
-  getAppointments,
-} from "../controllers/appointmentController";
+import appointmentController from "../controllers/appointmentController";
+const { createAppointment, getAppointments, cancelAppointment } =
+  appointmentController;
 import { validateAppointmentBooking } from "../middleware/validation";
 
 const router = Router();
@@ -14,7 +12,7 @@ const router = Router();
  * @access  Public (would be authenticated in production)
  * @body    { doctorId, patientId, start, end, reason? }
  */
-router.post("/", validateAppointmentBooking, bookAppointment);
+router.post("/", validateAppointmentBooking, createAppointment);
 
 /**
  * @route   GET /api/appointments

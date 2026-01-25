@@ -71,7 +71,8 @@ export const getAppointments = async (doctorId, date) => {
   const response = await api.get("/appointments", {
     params: { doctorId, date },
   });
-  return response.data.data.appointments;
+  // Backend returns array directly in data, not { appointments: [...] }
+  return response.data.data;
 };
 
 export const bookAppointment = async (appointmentData) => {
@@ -92,7 +93,8 @@ export const getAvailableSlots = async (doctorId, date, slotMinutes = 30) => {
   const response = await api.get("/availability", {
     params: { doctorId, date, slotMinutes },
   });
-  return response.data.data.slots;
+
+  return response.data.data;
 };
 
 export default api;

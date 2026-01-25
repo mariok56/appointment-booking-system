@@ -224,7 +224,20 @@ async function verifyNoOverlaps(doctorId) {
       params: { doctorId, date },
     });
 
-    const appointments = response.data.data.appointments;
+    // Handle different response formats
+    let appointments;
+    if (response.data.data && Array.isArray(response.data.data)) {
+      appointments = response.data.data;
+    } else if (response.data.data && response.data.data.appointments) {
+      appointments = response.data.data.appointments;
+    } else if (Array.isArray(response.data)) {
+      appointments = response.data;
+    } else {
+      log("yellow", "Unexpected response format:");
+      console.log(JSON.stringify(response.data, null, 2));
+      appointments = [];
+    }
+
     const bookedAppointments = appointments.filter(
       (a) => a.status === "BOOKED",
     );

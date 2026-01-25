@@ -1,4 +1,5 @@
 services:
+  # MongoDB Database (Replica Set for Transaction Support)
   mongodb:
     image: mongo:7
     container_name: appointment-db

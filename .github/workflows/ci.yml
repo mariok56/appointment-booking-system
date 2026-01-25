@@ -71,7 +71,17 @@ jobs:
 
       - name: Wait for MongoDB
         run: |
-          timeout 30 bash -c 'until mongosh --eval "db.adminCommand({ping: 1})" > /dev/null 2>&1; do sleep 1; done'
+          # Use Node.js to check MongoDB connection (mongosh not available on runner)
+          timeout 30 bash -c '
+            until node -e "
+              const { MongoClient } = require(\"mongodb\");
+              const client = new MongoClient(\"mongodb://localhost:27017\");
+              client.connect().then(() => { console.log(\"Connected\"); client.close(); process.exit(0); }).catch(() => process.exit(1));
+            " 2>/dev/null; do
+              echo "Waiting for MongoDB..."
+              sleep 2
+            done
+          '
 
       - name: Run unit tests (if they exist)
         working-directory: ./backend
@@ -104,8 +114,15 @@ jobs:
             --replSet rs0 \
             --bind_ip_all
 
-          # Wait for MongoDB to be ready
-          timeout 30 bash -c 'until docker exec mongodb mongosh --eval "db.adminCommand({ping: 1})" --quiet > /dev/null 2>&1; do sleep 2; done'
+          # Wait for MongoDB to be ready using docker exec
+          echo "Waiting for MongoDB to start..."
+          timeout 30 bash -c '
+            until docker exec mongodb mongosh --eval "db.adminCommand({ping: 1})" --quiet > /dev/null 2>&1; do
+              echo "Waiting..."
+              sleep 2
+            done
+          '
+          echo "MongoDB is up"
 
           # Initialize replica set
           docker exec mongodb mongosh --eval "
@@ -116,11 +133,12 @@ jobs:
               });
               print('Replica set initiated');
             } catch(e) {
-              print('Error:', e);
+              print('Error or already initiated:', e);
             }
           "
 
           # Wait for PRIMARY status
+          echo "Waiting for PRIMARY..."
           timeout 30 bash -c '
             until docker exec mongodb mongosh --eval "
               const status = rs.status();
@@ -130,7 +148,7 @@ jobs:
               }
               quit(1);
             " --quiet > /dev/null 2>&1; do 
-              sleep 2; 
+              sleep 2
             done
           '
 
@@ -195,18 +213,18 @@ jobs:
         run: docker build -t appointment-backend:${{ github.sha }} ./backend
 
       - name: Build frontend Docker image
-        run: docker build -t appointment-frontend:${{ github.sha }} ./frontend
+        run: docker build -t appointment-frontend:${{ github.sha }} --target production ./frontend
 
       - name: Test Docker Compose
         run: |
           docker compose up -d
-          sleep 10
+          sleep 15
 
           # Check if services are running
           docker compose ps
 
-          # Check backend health
-          curl -f http://localhost:3000/health || exit 1
+          # Wait for backend health
+          timeout 60 bash -c 'until curl -f http://localhost:3000/health > /dev/null 2>&1; do sleep 2; done'
 
           # Check frontend
           curl -f http://localhost:5173 || exit 1
